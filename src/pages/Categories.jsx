@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Upload } from 'lucide-react';
 import { api } from '../services/api';
+import { getImageUrl } from '../utils/helpers';
 
-const Categories = () => {
+const Categories = ({ showToast }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [formData, setFormData] = useState({ tenDanhMuc: '' });
+  const [formData, setFormData] = useState({ tenDanhMuc: '', hinhAnh: '' });
 
   useEffect(() => {
     fetchCategories();
@@ -34,8 +35,10 @@ const Categories = () => {
       }
       setModalOpen(false);
       fetchCategories();
+      if (typeof showToast === 'function') showToast(editingCategory ? 'Cập nhật danh mục thành công!' : 'Thêm danh mục mới thành công!');
     } catch (error) {
-      alert('Error: ' + error.message);
+      if (typeof showToast === 'function') showToast(error.message, 'error');
+      else alert('Error: ' + error.message);
     }
   };
 
@@ -43,9 +46,11 @@ const Categories = () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) {
       try {
         await api.categories.delete(id);
-        fetchCategories();
+        setCategories(prev => prev.filter(c => (c.categoryId || c.CategoryId) != id));
+        if (typeof showToast === 'function') showToast('Xóa danh mục thành công!', 'success');
       } catch (error) {
-        alert('Error: ' + error.message);
+        if (typeof showToast === 'function') showToast(error.message, 'error');
+        else alert('Error: ' + error.message);
       }
     }
   };
@@ -57,7 +62,7 @@ const Categories = () => {
           <h1>Danh mục</h1>
           <p>Quản lý phân loại sản phẩm</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setEditingCategory(null); setFormData({tenDanhMuc: ''}); setModalOpen(true); }}>
+        <button className="btn btn-primary" onClick={() => { setEditingCategory(null); setFormData({tenDanhMuc: '', hinhAnh: ''}); setModalOpen(true); }}>
           <Plus size={18} />
           Thêm danh mục
         </button>
@@ -67,21 +72,29 @@ const Categories = () => {
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Tên Danh mục</th>
-              <th>Thao tác</th>
+               <th>ID</th>
+               <th>Ảnh</th>
+               <th>Tên Danh mục</th>
+               <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="3" style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>
+              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>
             ) : categories.map((c) => (
-              <tr key={c.categoryId}>
-                <td>#{c.categoryId}</td>
-                <td style={{ fontWeight: 500 }}>{c.tenDanhMuc}</td>
+               <tr key={c.categoryId}>
+                 <td>#{c.categoryId}</td>
+                 <td>
+                   <img 
+                     src={getImageUrl(c.hinhAnh)} 
+                     alt={c.tenDanhMuc} 
+                     style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                   />
+                 </td>
+                 <td style={{ fontWeight: 500 }}>{c.tenDanhMuc}</td>
                 <td>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingCategory(c); setFormData({tenDanhMuc: c.tenDanhMuc}); setModalOpen(true); }}>
+                    <button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => { setEditingCategory(c); setFormData({tenDanhMuc: c.tenDanhMuc, hinhAnh: c.hinhAnh || ''}); setModalOpen(true); }}>
                       <Edit2 size={16} />
                     </button>
                     <button 
@@ -104,16 +117,55 @@ const Categories = () => {
           <div className="modal animate-fade-in">
             <h2>{editingCategory ? 'Sửa danh mục' : 'Thêm danh mục mới'}</h2>
             <form onSubmit={handleSubmit} style={{ marginTop: '1.5rem' }}>
-              <div className="form-group">
-                <label>Tên Danh mục</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  required 
-                  value={formData.tenDanhMuc}
-                  onChange={(e) => setFormData({tenDanhMuc: e.target.value})}
-                />
-              </div>
+               <div className="form-group">
+                 <label>Tên Danh mục</label>
+                 <input 
+                   type="text" 
+                   className="form-input" 
+                   required 
+                   value={formData.tenDanhMuc}
+                   onChange={(e) => setFormData({...formData, tenDanhMuc: e.target.value})}
+                 />
+               </div>
+               <div className="form-group">
+                 <label>Hình ảnh danh mục</label>
+                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                   <img 
+                     src={getImageUrl(formData.hinhAnh)} 
+                     alt="Preview" 
+                     style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border)' }}
+                   />
+                   <div style={{ flex: 1 }}>
+                     <input 
+                       type="file" 
+                       id="category-file-upload"
+                       style={{ display: 'none' }}
+                       onChange={async (e) => {
+                         const file = e.target.files[0];
+                         if (file) {
+                           try {
+                             const res = await api.files.upload(file);
+                             setFormData({ ...formData, hinhAnh: res.url });
+                           } catch (err) {
+                             alert('Lỗi upload: ' + err.message);
+                           }
+                         }
+                       }}
+                     />
+                     <label htmlFor="category-file-upload" className="btn btn-outline" style={{ width: '100%', cursor: 'pointer' }}>
+                       <Upload size={16} /> Chọn ảnh từ máy
+                     </label>
+                   </div>
+                 </div>
+                 <input 
+                   type="text" 
+                   className="form-input" 
+                   style={{ marginTop: '0.5rem' }}
+                   value={formData.hinhAnh}
+                   onChange={(e) => setFormData({...formData, hinhAnh: e.target.value})}
+                   placeholder="Hoặc dán URL ảnh tại đây"
+                 />
+               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                 <button type="button" className="btn btn-outline" onClick={() => setModalOpen(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary">Lưu lại</button>

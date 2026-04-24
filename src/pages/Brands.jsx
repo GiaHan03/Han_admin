@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Award } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Award, Upload } from 'lucide-react';
 import { api } from '../services/api';
+import { getImageUrl } from '../utils/helpers';
 
-const Brands = () => {
+const Brands = ({ showToast }) => {
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -49,8 +50,10 @@ const Brands = () => {
       }
       setModalOpen(false);
       fetchBrands();
+      if (typeof showToast === 'function') showToast(editingBrand ? 'Cập nhật thương hiệu thành công!' : 'Thêm thương hiệu mới thành công!');
     } catch (error) {
-      alert('Error: ' + error.message);
+      if (typeof showToast === 'function') showToast(error.message, 'error');
+      else alert('Error: ' + error.message);
     }
   };
 
@@ -58,9 +61,11 @@ const Brands = () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa thương hiệu này?')) {
       try {
         await api.brands.delete(id);
-        fetchBrands();
+        setBrands(prev => prev.filter(b => (b.brandId || b.BrandId) != id));
+        if (typeof showToast === 'function') showToast('Xóa thương hiệu thành công!', 'success');
       } catch (error) {
-        alert('Error: ' + error.message);
+        if (typeof showToast === 'function') showToast(error.message, 'error');
+        else alert('Error: ' + error.message);
       }
     }
   };
@@ -83,6 +88,7 @@ const Brands = () => {
           <thead>
             <tr>
               <th>ID</th>
+              <th>Ảnh</th>
               <th>Thương hiệu</th>
               <th>Mô tả</th>
               <th>Thao tác</th>
@@ -90,12 +96,19 @@ const Brands = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>
             ) : brands.length === 0 ? (
-              <tr><td colSpan="4" style={{ textAlign: 'center' }}>Chưa có thương hiệu nào</td></tr>
+              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Chưa có thương hiệu nào</td></tr>
             ) : brands.map((b) => (
               <tr key={b.brandId}>
                 <td>#{b.brandId}</td>
+                <td>
+                  <img 
+                    src={getImageUrl(b.hinhAnh)} 
+                    alt={b.tenThuongHieu} 
+                    style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                  />
+                </td>
                 <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{b.tenThuongHieu}</td>
                 <td style={{ fontSize: '0.875rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {b.moTa || 'Không có mô tả'}
@@ -147,13 +160,42 @@ const Brands = () => {
                 ></textarea>
               </div>
               <div className="form-group">
-                <label>Link hình ảnh (Logo)</label>
+                <label>Hình ảnh thương hiệu (Logo)</label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <img 
+                    src={getImageUrl(formData.hinhAnh)} 
+                    alt="Preview" 
+                    style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--border)' }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <input 
+                      type="file" 
+                      id="brand-file-upload"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          try {
+                            const res = await api.files.upload(file);
+                            setFormData({ ...formData, hinhAnh: res.url });
+                          } catch (err) {
+                            alert('Lỗi upload: ' + err.message);
+                          }
+                        }
+                      }}
+                    />
+                    <label htmlFor="brand-file-upload" className="btn btn-outline" style={{ width: '100%', cursor: 'pointer' }}>
+                      <Upload size={16} /> Chọn ảnh từ máy
+                    </label>
+                  </div>
+                </div>
                 <input 
                   type="text" 
                   className="form-input" 
+                  style={{ marginTop: '0.5rem' }}
                   value={formData.hinhAnh}
                   onChange={(e) => setFormData({...formData, hinhAnh: e.target.value})}
-                  placeholder="https://example.com/logo.png"
+                  placeholder="Hoặc dán URL ảnh tại đây"
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
