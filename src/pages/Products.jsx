@@ -22,10 +22,6 @@ const Products = ({ user, showToast }) => {
     moTa: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     try {
       const [pData, cData, bData] = await Promise.all([
@@ -43,6 +39,10 @@ const Products = ({ user, showToast }) => {
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const handleOpenModal = (product = null) => {
     if (product) {
       setEditingProduct(product);
@@ -50,8 +50,8 @@ const Products = ({ user, showToast }) => {
         tenBanh: product.tenBanh,
         gia: product.gia,
         soLuong: product.soLuong,
-        categoryId: product.categoryId,
-        brandId: product.brandId,
+        categoryId: product.categoryId || product.CategoryId,
+        brandId: product.brandId || product.BrandId,
         hinhAnh: product.hinhAnh || '',
         moTa: product.moTa || ''
       });
@@ -74,7 +74,8 @@ const Products = ({ user, showToast }) => {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await api.products.update(editingProduct.productId, { ...formData, productId: editingProduct.productId });
+        const idToUpdate = editingProduct.productId || editingProduct.ProductId;
+        await api.products.update(idToUpdate, { ...formData, productId: idToUpdate });
       } else {
         await api.products.create(formData);
       }
@@ -146,8 +147,8 @@ const Products = ({ user, showToast }) => {
             {loading ? (
               <tr><td colSpan="7" style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>
             ) : products.map((p) => (
-              <tr key={p.productId}>
-                <td>#{p.productId}</td>
+              <tr key={p.productId || p.ProductId}>
+                <td>#{p.productId || p.ProductId}</td>
                 <td>
                   <img 
                     src={getImageUrl(p.hinhAnh)} 
@@ -170,7 +171,7 @@ const Products = ({ user, showToast }) => {
                       <Edit2 size={16} />
                     </button>
                     {isManager && (
-                      <button className="btn btn-outline" style={{ padding: '0.4rem', color: '#ef4444' }} onClick={() => handleDelete(p.productId)}>
+                      <button className="btn btn-outline" style={{ padding: '0.4rem', color: '#ef4444' }} onClick={() => handleDelete(p.productId || p.ProductId)}>
                         <Trash2 size={16} />
                       </button>
                     )}

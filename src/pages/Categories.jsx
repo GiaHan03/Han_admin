@@ -10,10 +10,6 @@ const Categories = ({ showToast }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [formData, setFormData] = useState({ tenDanhMuc: '', hinhAnh: '' });
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
   const fetchCategories = async () => {
     try {
       const data = await api.categories.getAll();
@@ -25,11 +21,16 @@ const Categories = ({ showToast }) => {
     }
   };
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editingCategory) {
-        await api.categories.update(editingCategory.categoryId, { ...formData, categoryId: editingCategory.categoryId });
+        const idToUpdate = editingCategory.categoryId || editingCategory.CategoryId;
+        await api.categories.update(idToUpdate, { ...formData, categoryId: idToUpdate });
       } else {
         await api.categories.create(formData);
       }
@@ -82,8 +83,8 @@ const Categories = ({ showToast }) => {
             {loading ? (
               <tr><td colSpan="4" style={{ textAlign: 'center' }}>Đang tải dữ liệu...</td></tr>
             ) : categories.map((c) => (
-               <tr key={c.categoryId}>
-                 <td>#{c.categoryId}</td>
+               <tr key={c.categoryId || c.CategoryId}>
+                 <td>#{c.categoryId || c.CategoryId}</td>
                  <td>
                    <img 
                      src={getImageUrl(c.hinhAnh)} 
@@ -100,7 +101,7 @@ const Categories = ({ showToast }) => {
                     <button 
                       className="btn btn-outline" 
                       style={{ padding: '0.4rem', color: '#ef4444' }}
-                      onClick={() => handleDelete(c.categoryId)}
+                      onClick={() => handleDelete(c.categoryId || c.CategoryId)}
                     >
                       <Trash2 size={16} />
                     </button>

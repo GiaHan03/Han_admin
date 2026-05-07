@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Eye, Trash2, CheckCircle, Truck, Clock, FileDown } from 'lucide-react';
 import { api } from '../services/api';
+import { getImageUrl } from '../utils/helpers';
 
 const Orders = ({ showToast }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
 
   const handleExport = () => {
     const headers = ['Mã Đơn', 'Ngày Đặt', 'Khách Hàng', 'Tổng Tiền', 'Trạng Thái'];
     const csvData = orders.map(o => [
-      `ORD-${o.orderId}`,
+      `ORD-${o.orderId || o.OrderId}`,
       new Date(o.ngayBan).toLocaleDateString('vi-VN'),
       o.customer?.ten,
       o.tongTien,
@@ -27,24 +30,30 @@ const Orders = ({ showToast }) => {
     showToast('Đã xuất file báo cáo!');
   };
 
+  const fetchData = async () => {
+    try {
+      const [orderData, productData, customerData] = await Promise.all([
+        api.orders.getAll(),
+        api.products.getAll(),
+        api.customers.getAll()
+      ]);
+      setOrders(orderData);
+      setProducts(productData);
+      setCustomers(customerData);
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    fetchOrders();
+    fetchData();
   }, []);
 
   const handleViewDetails = (order) => {
     setSelectedOrder(order);
     setShowDetailModal(true);
-  };
-
-  const fetchOrders = async () => {
-    try {
-      const data = await api.orders.getAll();
-      setOrders(data);
-    } catch (error) {
-      console.error('Lỗi khi lấy danh sách đơn hàng:', error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const getStatusBadge = (status) => {
@@ -60,7 +69,7 @@ const Orders = ({ showToast }) => {
   const handleStatusUpdate = async (id, newStatus) => {
     try {
       await api.orders.updateStatus(id, newStatus);
-      setOrders(orders.map(o => o.orderId === id ? { ...o, status: newStatus } : o));
+      setOrders(orders.map(o => (o.orderId || o.OrderId) === id ? { ...o, status: newStatus } : o));
       showToast('Cập nhật trạng thái thành công!');
     } catch (error) {
       showToast('Lỗi cập nhật: ' + error.message, 'error');
@@ -110,10 +119,10 @@ const Orders = ({ showToast }) => {
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.orderId}>
-                  <td><span style={{ fontFamily: 'monospace', fontWeight: 600 }}>ORD-{order.orderId}</span></td>
+                <tr key={order.orderId || order.OrderId}>
+                  <td><span style={{ fontFamily: 'monospace', fontWeight: 600 }}>ORD-{order.orderId || order.OrderId}</span></td>
                   <td>{new Date(order.ngayBan).toLocaleDateString('vi-VN')}</td>
-                  <td>{order.customer?.ten || `Khách hàng #${order.customerId}`}</td>
+                  <td>{customers.find(c => (c.customerId || c.CustomerId) === (order.customerId || order.CustomerId))?.ten || `Khách hàng #${order.customerId || order.CustomerId}`}</td>
                   <td><span style={{ color: '#f59e0b', fontWeight: 600 }}>{order.tongTien.toLocaleString()}đ</span></td>
                   <td>
                     {order.paymentStatus === 'Paid' ? 
@@ -124,19 +133,19 @@ const Orders = ({ showToast }) => {
                   <td>{getStatusBadge(order.status)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                      <button className="btn-icon" title="Đang xử lý" onClick={() => handleStatusUpdate(order.orderId, 'Processing')}>
+                      <button className="btn-icon" title="Đang xử lý" onClick={() => handleStatusUpdate(order.orderId || order.OrderId, 'Processing')}>
                         <Clock size={16} />
                       </button>
-                      <button className="btn-icon" title="Đang giao" onClick={() => handleStatusUpdate(order.orderId, 'Shipping')}>
+                      <button className="btn-icon" title="Đang giao" onClick={() => handleStatusUpdate(order.orderId || order.OrderId, 'Shipping')}>
                         <Truck size={16} />
                       </button>
-                      <button className="btn-icon" title="Đã hoàn thành" style={{ color: '#10b981' }} onClick={() => handleStatusUpdate(order.orderId, 'Delivered')}>
+                      <button className="btn-icon" title="Đã hoàn thành" style={{ color: '#10b981' }} onClick={() => handleStatusUpdate(order.orderId || order.OrderId, 'Delivered')}>
                         <CheckCircle size={16} />
                       </button>
                       <button className="btn-icon" title="Xem chi tiết" onClick={() => handleViewDetails(order)}>
                         <Eye size={16} />
                       </button>
-                      <button className="btn-icon" title="Xóa đơn hàng" style={{ color: '#ef4444' }} onClick={() => handleDelete(order.orderId)}>
+                      <button className="btn-icon" title="Xóa đơn hàng" style={{ color: '#ef4444' }} onClick={() => handleDelete(order.orderId || order.OrderId)}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -157,15 +166,15 @@ const Orders = ({ showToast }) => {
         <div className="modal-overlay">
           <div className="modal animate-fade-in" style={{ maxWidth: '700px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2>Chi tiết đơn hàng #ORD-{selectedOrder.orderId}</h2>
+              <h2>Chi tiết đơn hàng #ORD-{selectedOrder.orderId || selectedOrder.OrderId}</h2>
               <button className="btn-icon" onClick={() => setShowDetailModal(false)}>✕</button>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
               <div>
                 <p style={{ opacity: 0.6, fontSize: '0.875rem' }}>Khách hàng</p>
-                <p style={{ fontWeight: 600 }}>{selectedOrder.customer?.ten}</p>
-                <p style={{ fontSize: '0.875rem' }}>{selectedOrder.customer?.soDienThoai}</p>
+                <p style={{ fontWeight: 600 }}>{customers.find(c => (c.customerId || c.CustomerId) === (selectedOrder.customerId || selectedOrder.CustomerId))?.ten || 'N/A'}</p>
+                <p style={{ fontSize: '0.875rem' }}>{customers.find(c => (c.customerId || c.CustomerId) === (selectedOrder.customerId || selectedOrder.CustomerId))?.soDienThoai || ''}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ opacity: 0.6, fontSize: '0.875rem' }}>Ngày đặt</p>
@@ -188,8 +197,11 @@ const Orders = ({ showToast }) => {
                     <tr key={i}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <img src={item.product?.hinhAnh} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
-                          <span>{item.product?.tenBanh}</span>
+                          <img 
+                            src={getImageUrl(products.find(p => (p.productId || p.ProductId) === (item.productId || item.ProductId))?.hinhAnh)} 
+                            style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} 
+                          />
+                          <span>{products.find(p => (p.productId || p.ProductId) === (item.productId || item.ProductId))?.tenBanh || `Sản phẩm #${item.productId}`}</span>
                         </div>
                       </td>
                       <td>{item.soLuong}</td>

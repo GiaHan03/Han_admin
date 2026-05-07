@@ -10,10 +10,6 @@ const Brands = ({ showToast }) => {
   const [editingBrand, setEditingBrand] = useState(null);
   const [formData, setFormData] = useState({ tenThuongHieu: '', moTa: '', hinhAnh: '' });
 
-  useEffect(() => {
-    fetchBrands();
-  }, []);
-
   const fetchBrands = async () => {
     try {
       const data = await api.brands.getAll();
@@ -24,6 +20,10 @@ const Brands = ({ showToast }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchBrands();
+  }, []);
 
   const handleOpenModal = (brand = null) => {
     if (brand) {
@@ -44,7 +44,8 @@ const Brands = ({ showToast }) => {
     e.preventDefault();
     try {
       if (editingBrand) {
-        await api.brands.update(editingBrand.brandId, { ...formData, brandId: editingBrand.brandId });
+        const idToUpdate = editingBrand.brandId || editingBrand.BrandId;
+        await api.brands.update(idToUpdate, { ...formData, brandId: idToUpdate });
       } else {
         await api.brands.create(formData);
       }
@@ -100,8 +101,8 @@ const Brands = ({ showToast }) => {
             ) : brands.length === 0 ? (
               <tr><td colSpan="5" style={{ textAlign: 'center' }}>Chưa có thương hiệu nào</td></tr>
             ) : brands.map((b) => (
-              <tr key={b.brandId}>
-                <td>#{b.brandId}</td>
+              <tr key={b.brandId || b.BrandId}>
+                <td>#{b.brandId || b.BrandId}</td>
                 <td>
                   <img 
                     src={getImageUrl(b.hinhAnh)} 
@@ -121,7 +122,7 @@ const Brands = ({ showToast }) => {
                     <button 
                       className="btn btn-outline" 
                       style={{ padding: '0.4rem', color: '#ef4444' }}
-                      onClick={() => handleDelete(b.brandId)}
+                      onClick={() => handleDelete(b.brandId || b.BrandId)}
                     >
                       <Trash2 size={16} />
                     </button>

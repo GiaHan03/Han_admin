@@ -18,10 +18,6 @@ const Employees = ({ showToast }) => {
     password: ''
   });
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
   const fetchEmployees = async () => {
     try {
       const data = await api.employees.getAll();
@@ -32,6 +28,10 @@ const Employees = ({ showToast }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   const handleOpenModal = (employee = null) => {
     if (employee) {

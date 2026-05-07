@@ -2,11 +2,25 @@ const API_BASE_URL = 'http://localhost:5023/api';
 
 const handleResponse = async (response) => {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Something went wrong' }));
+    const text = await response.text();
+    let error;
+    try {
+      error = JSON.parse(text);
+    } catch {
+      error = { message: text || 'Something went wrong' };
+    }
     throw new Error(error.message || response.statusText);
   }
   if (response.status === 204) return null;
-  return response.json();
+  
+  const text = await response.text();
+  if (!text) return null;
+  
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
 };
 
 export const api = {

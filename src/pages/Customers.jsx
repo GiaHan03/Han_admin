@@ -6,10 +6,6 @@ const Customers = ({ showToast }) => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
-
   const fetchCustomers = async () => {
     try {
       const data = await api.customers.getAll();
@@ -20,6 +16,10 @@ const Customers = ({ showToast }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
   const handleDelete = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa khách hàng này?')) {
@@ -76,8 +76,8 @@ const Customers = ({ showToast }) => {
             </thead>
             <tbody>
               {customers.map((customer) => (
-                <tr key={customer.customerId}>
-                  <td>#{customer.customerId}</td>
+                <tr key={customer.customerId || customer.CustomerId}>
+                  <td>#{customer.customerId || customer.CustomerId}</td>
                   <td>
                     <div style={{ fontWeight: 500 }}>{customer.ten}</div>
                   </td>
@@ -88,7 +88,7 @@ const Customers = ({ showToast }) => {
                       <button className="btn-icon">
                         <Edit2 size={16} />
                       </button>
-                      <button className="btn-icon" style={{ color: '#ef4444' }} onClick={() => handleDelete(customer.customerId)}>
+                      <button className="btn-icon" style={{ color: '#ef4444' }} onClick={() => handleDelete(customer.customerId || customer.CustomerId)}>
                         <Trash2 size={16} />
                       </button>
                     </div>
